@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 
+
 def _load_events(file_path: str = "data/events.txt") -> list:
     events = []
     with open(file_path) as f:
@@ -28,11 +29,22 @@ def _load_rates(file_path: str) -> dict:
                 rates[parts[0]] = float(parts[1])
     return rates
 
+
 EVENTS = _load_events()
 TELESCOPE_RATES = _load_rates("data/telescope_rates.txt")
 PRIORITY_MULTIPLIERS = _load_rates("data/priority_multipliers.txt")
 
+
 # Determine the next visible astronomical event for a given location
+def next_visible_event(location: str) -> str:
+    """Returns the next visible astronomical event for a location."""
+    today = int(datetime.now().strftime("%m%d"))
+    loc = location.lower().replace(" ", "_")
+    # Retrieve the next event visible from the location, starting with events later this year
+    for name, event_type, date, date_str, locs in EVENTS:
+        if loc in locs and date >= today:
+            return json.dumps({"event": name, "type": event_type, "date": date_str, "visible_from": sorted(locs)})
+    return json.dumps({"message": f"No upcoming events found for {location}."})
 
 
 # Calculate the cost of telescope observation time based on the tier, hours, and priority
@@ -40,13 +52,10 @@ def calculate_observation_cost(telescope_tier: str, hours: float, priority: str)
     """Calculates the cost of telescope observation time."""
     tier = telescope_tier.lower()
     pri = priority.lower()
-
     if tier not in TELESCOPE_RATES:
         return json.dumps({"error": f"Unknown telescope tier '{telescope_tier}'. Choose from: {', '.join(TELESCOPE_RATES)}"})
-
     if pri not in PRIORITY_MULTIPLIERS:
         return json.dumps({"error": f"Unknown priority '{priority}'. Choose from: {', '.join(PRIORITY_MULTIPLIERS)}"})
-
     if hours <= 0:
         return json.dumps({"error": "Hours must be greater than zero."})
 
@@ -63,6 +72,7 @@ def calculate_observation_cost(telescope_tier: str, hours: float, priority: str)
         "base_cost": base_cost,
         "total_cost": total_cost
     })
+
 
 # Generate an observation report summarizing the details of an astronomical observation session
 def generate_observation_report(event_name: str, location: str, telescope_tier: str, hours: float, priority: str, observer_name: str) -> str:
@@ -103,8 +113,7 @@ TELESCOPE BOOKING
 COST SUMMARY
   Base Cost:    ${cost_result['base_cost']:.2f}
   Total Cost:   ${cost_result['total_cost']:.2f}
-======================================
-"""
+======================================"""
 
     with open(filename, "w") as f:
         f.write(report)
